@@ -1,6 +1,14 @@
 ##### Build vendor (composer) stage #####
-FROM composer:2 as vendor
+FROM php:8.2-cli as vendor
 WORKDIR /app
+
+# Install basic tools and zip extension required by many PHP packages
+RUN apt-get update && apt-get install -y git zip unzip libzip-dev curl && \
+    docker-php-ext-install zip || true
+
+# Copy composer binary from official composer image into this php 8.2 CLI stage
+COPY --from=composer:2 /usr/bin/composer /usr/bin/composer
+
 COPY composer.json composer.lock ./
 RUN composer install --no-dev --no-interaction --prefer-dist --no-progress --optimize-autoloader
 
