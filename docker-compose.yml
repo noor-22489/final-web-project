@@ -1,36 +1,37 @@
-# Stage 1 - Build Frontend (Vite)
-FROM node:18 AS frontend
-WORKDIR /app
-COPY package*.json ./
-RUN npm install
-COPY . .
-RUN npm run build
+version: '3.8'
 
-# Stage 2 - Backend (Laravel + PHP + Composer)
-FROM php:8.2-fpm AS backend
+services:
+    app:
+        build:
+            context: .
+            dockerfile: Dockerfile
+        image: lms-app:latest
+        restart: unless-stopped
+        ports:
+            - "9000:9000"
+        volumes:
+            - ./:/var/www:delegated
+        environment:
+            APP_ENV: local
+            APP_DEBUG: '1'
+            DB_HOST: db
+            DB_DATABASE: lms
+            DB_USERNAME: lmsuser
+            DB_PASSWORD: secret
+        depends_on:
+            - db
 
-# Install system dependencies
-RUN apt-get update && apt-get install -y \
-    git curl unzip libpq-dev libonig-dev libzip-dev zip \
-    && docker-php-ext-install pdo pdo_mysql mbstring zip
+    db:
+        image: mysql:8.0
+        restart: unless-stopped
+        environment:
+            MYSQL_DATABASE: lms
+            MYSQL_USER: lmsuser
+            MYSQL_PASSWORD: secret
+            MYSQL_ROOT_PASSWORD: root
+        volumes:
+            - db_data:/var/lib/mysql
 
-# Install Composer
-COPY --from=composer:2 /usr/bin/composer /usr/bin/composer
+volumes:
+    db_data:
 
-WORKDIR /var/www
-
-# Copy app files
-COPY . .
-
-# Copy built frontend from Stage 1
-COPY --from=frontend /app/public/dist ./public/dist
-
-# Install PHP dependencies
-RUN composer install --no-dev --optimize-autoloader
-
-# Laravel setup
-RUN php artisan config:clear && \
-    php artisan route:clear && \
-    php artisan view:clear
-
-CMD ["php-fpm"]
