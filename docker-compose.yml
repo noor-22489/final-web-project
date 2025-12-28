@@ -8,7 +8,7 @@ services:
         image: lms-app:latest
         restart: unless-stopped
         ports:
-            - "9000:9000"
+            - "8000:8000"
         volumes:
             - ./:/var/www:delegated
         environment:
@@ -20,6 +20,7 @@ services:
             DB_PASSWORD: secret
         depends_on:
             - db
+        command: php artisan serve --host=0.0.0.0 --port=8000
 
     db:
         image: mysql:8.0

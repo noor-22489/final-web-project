@@ -22,6 +22,9 @@ WORKDIR /var/www
 # Copy app files
 COPY . .
 
+# Copy built frontend assets from frontend stage (Vite -> public)
+COPY --from=frontend /app/public ./public
+
 # Install PHP dependencies
 RUN composer install --no-dev --optimize-autoloader
 
