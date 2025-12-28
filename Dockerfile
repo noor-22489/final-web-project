@@ -1,64 +1,36 @@
-##### Build vendor (composer) stage #####
-FROM php:8.4-cli as vendor
-WORKDIR /app
-
-# Install basic tools and zip extension required by many PHP packages
-RUN apt-get update && apt-get install -y git zip unzip libzip-dev curl && \
-    docker-php-ext-install zip || true
-
-# Copy composer binary from official composer image into this php 8.2 CLI stage
-COPY --from=composer:2 /usr/bin/composer /usr/bin/composer
-
-COPY composer.json composer.lock ./
-RUN composer install --no-dev --no-interaction --prefer-dist --no-progress --optimize-autoloader
-
-##### Build frontend (node) stage (optional) #####
-FROM node:18 as node_builder
+# Stage 1 - Build Frontend (Vite)
+FROM node:18 AS frontend
 WORKDIR /app
 COPY package*.json ./
-RUN if [ -f package-lock.json ]; then \
-            npm ci --no-audit --no-fund --no-progress; \
-        else \
-            npm install --no-audit --no-fund --no-progress; \
-        fi
+RUN npm install
 COPY . .
-RUN if [ -f package.json ] && grep -q "build" package.json; then npm run build; fi || true
+RUN npm run build
 
-##### Production image #####
-FROM php:8.4-fpm
+# Stage 2 - Backend (Laravel + PHP + Composer)
+FROM php:8.2-fpm AS backend
 
-ENV APP_ENV=production \
-    APP_DEBUG=false \
-    COMPOSER_ALLOW_SUPERUSER=1
-
+# Install system dependencies
 RUN apt-get update && apt-get install -y \
-    git zip unzip libzip-dev libpng-dev libonig-dev libxml2-dev curl \
-    libfreetype6-dev libjpeg62-turbo-dev \
-    && docker-php-ext-configure gd --with-freetype --with-jpeg \
-    && docker-php-ext-install pdo pdo_mysql mbstring exif pcntl bcmath gd zip \
-    && rm -rf /var/lib/apt/lists/*
+    git curl unzip libpq-dev libonig-dev libzip-dev zip \
+    && docker-php-ext-install pdo pdo_mysql mbstring zip
 
-# copy composer binary from official composer image (fallback)
-COPY --from=vendor /usr/bin/composer /usr/bin/composer
+# Install Composer
+COPY --from=composer:2 /usr/bin/composer /usr/bin/composer
 
-WORKDIR /var/www/html
+WORKDIR /var/www
 
-# copy application files and installed vendor from vendor stage
-COPY --from=vendor /app/vendor ./vendor
-COPY --from=vendor /app/composer.* ./
+# Copy app files
 COPY . .
 
-# copy built frontend assets if available
-COPY --from=node_builder /app/public ./public
+# Copy built frontend from Stage 1
+COPY --from=frontend /app/public/dist ./public/dist
 
-# Runtime permissions
-RUN chown -R www-data:www-data /var/www/html \
-    && chmod -R 755 /var/www/html/storage /var/www/html/bootstrap/cache || true
+# Install PHP dependencies
+RUN composer install --no-dev --optimize-autoloader
 
-# Add entrypoint to perform runtime housekeeping (migrations/optimize are optional)
-COPY docker-entrypoint.sh /usr/local/bin/docker-entrypoint.sh
-RUN chmod +x /usr/local/bin/docker-entrypoint.sh
+# Laravel setup
+RUN php artisan config:clear && \
+    php artisan route:clear && \
+    php artisan view:clear
 
-EXPOSE 9000
-ENTRYPOINT ["/usr/local/bin/docker-entrypoint.sh"]
 CMD ["php-fpm"]
