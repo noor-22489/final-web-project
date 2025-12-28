@@ -1,5 +1,5 @@
 ##### Build vendor (composer) stage #####
-FROM php:8.2-cli as vendor
+FROM php:8.4-cli as vendor
 WORKDIR /app
 
 # Install basic tools and zip extension required by many PHP packages
@@ -25,7 +25,7 @@ COPY . .
 RUN if [ -f package.json ] && grep -q "build" package.json; then npm run build; fi || true
 
 ##### Production image #####
-FROM php:8.2-fpm
+FROM php:8.4-fpm
 
 ENV APP_ENV=production \
     APP_DEBUG=false \
