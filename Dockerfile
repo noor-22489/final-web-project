@@ -31,6 +31,10 @@ RUN composer install --no-dev --optimize-autoloader
 # Laravel setup
 RUN php artisan config:clear && \
     php artisan route:clear && \
-    php artisan view:clear
+    if [ -d resources/views ]; then \
+        php artisan view:clear; \
+    else \
+        echo "No resources/views directory; skipping view:clear"; \
+    fi
 
 CMD ["php-fpm"]
