@@ -8,7 +8,11 @@ RUN composer install --no-dev --no-interaction --prefer-dist --no-progress --opt
 FROM node:18 as node_builder
 WORKDIR /app
 COPY package*.json ./
-RUN npm ci --no-audit --no-fund
+RUN if [ -f package-lock.json ]; then \
+            npm ci --no-audit --no-fund --no-progress; \
+        else \
+            npm install --no-audit --no-fund --no-progress; \
+        fi
 COPY . .
 RUN if [ -f package.json ] && grep -q "build" package.json; then npm run build; fi || true
 
