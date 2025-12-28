@@ -1,0 +1,47 @@
+version: '3.8'
+services:
+  app:
+    build: .
+    image: lms-app:latest
+    restart: unless-stopped
+    volumes:
+      - ./:/var/www/html:delegated
+    environment:
+      - APP_ENV=production
+      - APP_DEBUG=0
+    depends_on:
+      - db
+    networks:
+      - lms-network
+
+  nginx:
+    image: nginx:stable
+    ports:
+      - 80:80
+    volumes:
+      - ./:/var/www/html:ro
+      - ./docker/nginx/default.conf:/etc/nginx/conf.d/default.conf:ro
+    depends_on:
+      - app
+    networks:
+      - lms-network
+
+  db:
+    image: mysql:8.0
+    restart: unless-stopped
+    environment:
+      MYSQL_DATABASE: lms
+      MYSQL_USER: lmsuser
+      MYSQL_PASSWORD: secret
+      MYSQL_ROOT_PASSWORD: root
+    volumes:
+      - db_data:/var/lib/mysql
+    networks:
+      - lms-network
+
+volumes:
+  db_data:
+
+networks:
+  lms-network:
+    driver: bridge
