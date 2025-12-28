@@ -14,5 +14,3 @@ yarn-error.log
 tests
 tmp
 docker-compose.yml
-docker/
-docker-entrypoint.sh
