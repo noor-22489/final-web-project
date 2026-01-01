@@ -34,4 +34,7 @@ RUN php artisan config:clear && \
     mkdir -p resources/views && \
     php artisan view:clear || echo "php artisan view:clear failed; continuing"
 
-CMD ["php-fpm"]
+# Expose port and run PHP built-in server so the container listens on HTTP
+EXPOSE 8080
+ENV PORT=8080
+CMD ["sh", "-lc", "php -S 0.0.0.0:${PORT:-8080} -t public"]
