@@ -28,6 +28,11 @@ COPY --from=frontend /app/public ./public
 # Install PHP dependencies
 RUN composer install --no-dev --optimize-autoloader
 
+# Ensure storage and cache directories exist and are writable (fixes "Please provide a valid cache path")
+RUN mkdir -p storage/framework/sessions storage/framework/views storage/framework/cache storage/logs bootstrap/cache && \
+    chown -R www-data:www-data storage bootstrap/cache || true && \
+    chmod -R 775 storage bootstrap/cache || true
+
 # Laravel setup
 RUN php artisan config:clear && \
     php artisan route:clear && \
